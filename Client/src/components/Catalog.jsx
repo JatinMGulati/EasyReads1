@@ -1,0 +1,145 @@
+import React, { useState, useEffect, useCallback } from "react";
+import SearchBar from "./SearchBar"; // Import the SearchBar component
+
+const Catalog = () => {
+  const [books, setBooks] = useState([]); // All books in the catalog
+  const [filteredBooks, setFilteredBooks] = useState([]); // Books currently displayed after search/filter
+  const [loading, setLoading] = useState(false); // To track if more books are being fetched
+  const [page, setPage] = useState(1); // To track the current page for loading books
+
+  const booksPerPage = 16; // Number of books to load at once
+  // Use environment variable for API base URL, fallback to localhost
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+  useEffect(() => {
+    fetchBooks(page);
+    // eslint-disable-next-line
+  }, [page]);
+
+  // Function to fetch books from the API
+  const fetchBooks = async (page) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/books?page=${page}&limit=${booksPerPage}`);
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const data = await response.json();
+      setBooks((prevBooks) => [...prevBooks, ...data]);
+      setFilteredBooks((prevBooks) => [...prevBooks, ...data]);
+    } catch (err) {
+      console.error("Error fetching books:", err);
+      setFilteredBooks([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle search input
+  const handleSearch = (query) => {
+    if (!query) {
+      setFilteredBooks(books); // Show all books if no query
+    } else {
+      const filtered = books.filter(
+        (book) =>
+          book.name.toLowerCase().includes(query.toLowerCase()) ||
+          book.author.toLowerCase().includes(query.toLowerCase())
+      );
+      setFilteredBooks(filtered);
+    }
+  };
+
+  // Detect when the user has scrolled to the bottom of the page
+  const handleScroll = useCallback(() => {
+    const bottom =
+      document.documentElement.scrollHeight ===
+      document.documentElement.scrollTop + window.innerHeight;
+    if (bottom && !loading) {
+      setPage((prevPage) => prevPage + 1); // Load more books when reaching the bottom
+    }
+  }, [loading]);
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [handleScroll]);
+
+  // Divide books into 4 groups
+  const divideBooksIntoGroups = (books, groupCount) => {
+    const groups = Array.from({ length: groupCount }, () => []);
+    books.forEach((book, index) => {
+      groups[index % groupCount].push(book);
+    });
+    return groups;
+  };
+
+  const groupedBooks = divideBooksIntoGroups(filteredBooks, 4); // Divide books into 4 groups
+
+  return (
+    <div className="p-4 bg-gray-900 min-h-screen relative text-gray-100">
+      {/* Search Bar */}
+      <div className="absolute top-4 right-4 flex space-x-4">
+        <SearchBar onSearch={handleSearch} />
+      </div>
+
+      <h1 className="text-4xl font-bold text-center mb-8 text-gray-100">
+        Book Catalog
+      </h1>
+
+      {/* Show message if no books are found or error occurred */}
+      {filteredBooks.length === 0 && !loading ? (
+        <div className="text-center text-xl text-red-400">
+          Could not load books. Please check your connection or try again later.
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {groupedBooks.map((group, groupIndex) => (
+            <div
+              key={groupIndex}
+              className="overflow-x-auto whitespace-nowrap flex space-x-6 py-4 scrollbar-hide"
+            >
+              {group.map((book, index) => (
+                <div
+                  key={index}
+                  className="flex-shrink-0 w-64 bg-gray-800 p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 relative overflow-hidden"
+                >
+                  <img
+                    src={book.image_link}
+                    alt={book.name}
+                    className="w-full h-48 object-contain mb-4 rounded-lg shadow-md"
+                  />
+                  <h2 className="text-xl font-semibold mb-2 text-gray-100">
+                    {book.name}
+                  </h2>
+                  <p className="text-gray-400">
+                    <strong>Author:</strong> {book.author}
+                  </p>
+                  <p className="text-gray-400">
+                    <strong>ISBN:</strong> {book.ISBN}
+                  </p>
+                  <button
+                    onClick={() => window.open(book.amazon_link, "_blank")}
+                    className="mt-4 px-6 py-2 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  >
+                    Buy on Amazon
+                  </button>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Loading Indicator */}
+      {loading && (
+        <div className="flex justify-center mt-8 text-gray-400">
+          <span>Loading more books...</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Catalog;
