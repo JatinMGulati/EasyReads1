@@ -52,10 +52,8 @@ The Server/README_API.md file includes curl examples for quick tests and can be 
 ## Contributors
 
 - Jatin M Gulati
-- Vidhvath J Poojari
-- Prabhas Varma
-- Pawan Omprakash
-- Raniya Poonthala
+- G Madhuri Varma
+- 
 
 ---
 
